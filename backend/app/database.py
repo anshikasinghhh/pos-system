@@ -45,20 +45,22 @@ import os
 
 load_dotenv()
 
-# Read Mongo URI
+# Use Atlas in production and local MongoDB only for development.
+configured_uri = os.getenv("MONGODB_URI")
+is_production = (
+    os.getenv("RENDER", "").lower() == "true"
+    or os.getenv("ENVIRONMENT", "").lower() == "production"
+)
 
-configured_uri = os.getenv("MONGO_URI")
-preferred_uris = []
+if is_production and not configured_uri:
+    raise RuntimeError("MONGODB_URI must be configured in production.")
 
-if configured_uri:
-    preferred_uris.append(configured_uri)
+preferred_uris = (
+    [configured_uri]
+    if configured_uri
+    else ["mongodb://localhost:27017", "mongodb://127.0.0.1:27017"]
+)
 
-preferred_uris.extend([
-    "mongodb://localhost:27017",
-    "mongodb://127.0.0.1:27017"
-])
-
-# Prefer a reachable local MongoDB for development, then fall back to the configured URI.
 MONGO_URI = None
 last_error = None
 
@@ -67,13 +69,19 @@ for uri in preferred_uris:
         client = MongoClient(uri, serverSelectionTimeoutMS=3000)
         client.admin.command("ping")
         MONGO_URI = uri
-        print("MongoDB Connected Successfully to:", MONGO_URI)
+        print("MongoDB Connected Successfully")
         break
     except Exception as e:
         last_error = e
+        if configured_uri:
+            raise RuntimeError(
+                "Unable to connect using MONGODB_URI; check the Atlas URI, credentials, and network access."
+            ) from None
         continue
 
 if MONGO_URI is None:
+    if is_production:
+        raise RuntimeError("MongoDB is unavailable; production cannot use in-memory storage.")
     print("MongoDB Connection Error (falling back to in-memory):", last_error)
     client = None
     USING_IN_MEMORY = True
