@@ -1,7 +1,7 @@
 import { products, salesData, topProducts, categoryData, aiSuggestions, demandTrends } from '../data/mockData';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace("http://localhost:", "http://127.0.0.1:").replace("https://localhost:", "https://127.0.0.1:");
 
 console.log("[api] using API_URL:", API_URL);
 
@@ -23,13 +23,24 @@ const fetchJson = async (path, options = {}) => {
     try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
 
     if (!res.ok) {
-      const errMsg = data && data.detail ? data.detail : data && data.error ? data.error : `HTTP ${res.status}`;
-      throw new Error(errMsg);
+      const errMsg =
+        (data && data.detail) ||
+        (data && data.error) ||
+        (data && data.message) ||
+        `HTTP ${res.status}`;
+
+      const error = new Error(errMsg);
+      error.status = res.status;
+      error.data = data;
+      throw error;
     }
 
     return data;
   } catch (err) {
     console.error(`[api] fetch error (${url}):`, err);
+    if (err && err.name === "Error" && err.message) {
+      throw err;
+    }
     throw new Error(`Failed to fetch ${url}: ${err.message}`);
   }
 };
@@ -62,11 +73,17 @@ export const api = {
         body: JSON.stringify({ email, password })
       });
 
+      const user = data?.user || {
+        email,
+        name: email.split("@")[0],
+        role: "customer"
+      };
+
       // Store token and user data
       if (data?.token) localStorage.setItem("token", data.token);
-      if (data?.user) localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("user", JSON.stringify(user));
 
-      return data;
+      return { ...data, user };
     },
 
     signup: async (name, email, password) => {

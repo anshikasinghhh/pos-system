@@ -79,8 +79,13 @@ export default function App()  {
   const handleLogin = async (email, password) => {
 
     const res = await api.auth.login(email, password);
+    const loggedInUser = res?.user || {
+      email,
+      name: email.split("@")[0],
+      role: "customer"
+    };
 
-    setUser(res.user);
+    setUser(loggedInUser);
     setActivePage("dashboard");
 
     // Role-based default page

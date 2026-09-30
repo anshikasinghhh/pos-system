@@ -71,7 +71,10 @@ export default function Login({ onLogin, onGoSignup }) {
   } catch (err) {
 
     setError(
-      err.response?.data?.detail || "Login failed"
+      err?.data?.detail ||
+      err?.detail ||
+      err?.message ||
+      "Login failed"
     );
 
   } finally {

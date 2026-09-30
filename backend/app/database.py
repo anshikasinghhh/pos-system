@@ -47,23 +47,39 @@ load_dotenv()
 
 # Read Mongo URI
 
-MONGO_URI = os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+configured_uri = os.getenv("MONGO_URI")
+preferred_uris = []
 
-print("Loaded Mongo URI:", MONGO_URI)
+if configured_uri:
+    preferred_uris.append(configured_uri)
 
-# Try to connect to MongoDB, fall back to in-memory collections on failure
+preferred_uris.extend([
+    "mongodb://localhost:27017",
+    "mongodb://127.0.0.1:27017"
+])
 
-client = None
-USING_IN_MEMORY = False
+# Prefer a reachable local MongoDB for development, then fall back to the configured URI.
+MONGO_URI = None
+last_error = None
 
-try:
-    client = MongoClient(MONGO_URI)
-    # Test connection
-    client.admin.command("ping")
-    print("MongoDB Connected Successfully!")
-except Exception as e:
-    print("MongoDB Connection Error (falling back to in-memory):", e)
+for uri in preferred_uris:
+    try:
+        client = MongoClient(uri, serverSelectionTimeoutMS=3000)
+        client.admin.command("ping")
+        MONGO_URI = uri
+        print("MongoDB Connected Successfully to:", MONGO_URI)
+        break
+    except Exception as e:
+        last_error = e
+        continue
+
+if MONGO_URI is None:
+    print("MongoDB Connection Error (falling back to in-memory):", last_error)
+    client = None
     USING_IN_MEMORY = True
+else:
+    USING_IN_MEMORY = False
+    client = MongoClient(MONGO_URI)
 
 if not USING_IN_MEMORY:
     # Database
