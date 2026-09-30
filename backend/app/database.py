@@ -87,7 +87,6 @@ if MONGO_URI is None:
     USING_IN_MEMORY = True
 else:
     USING_IN_MEMORY = False
-    client = MongoClient(MONGO_URI)
 
 if not USING_IN_MEMORY:
     # Database
@@ -201,4 +200,7 @@ else:
                 return sales_collection
             return InMemoryCollection()
     db = InMemoryDb()
+
+# Keep the legacy singular import compatible with the shared users collection.
+user_collection = users_collection
 
