@@ -55,8 +55,13 @@
 # })
 #     return {"message": "Inserted successfully"}
 
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+load_dotenv()
 
 # Import routes
 
@@ -68,12 +73,32 @@ app = FastAPI()
 
 # CORS Middleware
 
+default_allowed_origins = [
+	"http://localhost:5173",
+	"http://localhost:3000",
+	"http://127.0.0.1:5173",
+	"http://127.0.0.1:3000",
+	"https://pos-system1-xivr.onrender.com",
+	"https://pos-system-backend-u3ot.onrender.com",
+]
+
+env_allowed_origins = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [
+	origin.strip()
+	for origin in env_allowed_origins.split(",")
+	if origin.strip()
+]
+
+if not allowed_origins:
+	allowed_origins = default_allowed_origins
+
 app.add_middleware(
-CORSMiddleware,
-allow_origins=["*"],
-allow_credentials=True,
-allow_methods=["*"],
-allow_headers=["*"],
+	CORSMiddleware,
+	allow_origins=allowed_origins,
+	allow_origin_regex=r"https://.*\.onrender\.com",
+	allow_credentials=True,
+	allow_methods=["*"],
+	allow_headers=["*"],
 )
 
 # Auth Routes
